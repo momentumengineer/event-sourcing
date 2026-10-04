@@ -38,6 +38,7 @@
     "build": "tsup",
     "typecheck": "tsc",
     "test": "vitest run",
+    "test:pg": "vitest run --config vitest.postgres.config.ts",
     "prepublishOnly": "npm run typecheck && npm test && npm run build",
     "build:publish": "npm run version:patch && npm publish --access public",
     "version:patch": "npm version patch --no-git-tag-version",
@@ -53,8 +54,11 @@
     }
   },
   "devDependencies": {
+    "@testcontainers/postgresql": "^12.2.0",
     "@types/node": "^24",
+    "@types/pg": "^8.23.1",
     "kysely": "^0.28",
+    "pg": "^8.23.1",
     "tsup": "^8",
     "typescript": "^6.0",
     "vitest": "^4.1.11"
