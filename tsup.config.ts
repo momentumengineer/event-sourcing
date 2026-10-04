@@ -5,7 +5,7 @@ export default defineConfig({
     index: "src/index.ts",
     "kysely/index": "src/kysely/index.ts",
   },
-  format: ["esm", "cjs"],
+  format: ["esm"],
   dts: { compilerOptions: { ignoreDeprecations: "6.0" } },
   clean: true,
   target: "es2022",
