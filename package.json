@@ -1,0 +1,73 @@
+{
+  "name": "@momentumengineer/event-sourcing",
+  "version": "0.0.1",
+  "description": "Event sourcing building blocks: events, aggregates, command handlers and projections, with pluggable storage.",
+  "author": "Momentum Engineer",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/momentumengineer/momentum-event-sourcing.git"
+  },
+  "keywords": [
+    "event-sourcing",
+    "cqrs",
+    "projections",
+    "kysely"
+  ],
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
+    },
+    "./kysely": {
+      "import": {
+        "types": "./dist/kysely/index.d.ts",
+        "default": "./dist/kysely/index.js"
+      },
+      "require": {
+        "types": "./dist/kysely/index.d.cts",
+        "default": "./dist/kysely/index.cjs"
+      }
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "sideEffects": false,
+  "engines": {
+    "node": ">=20.19"
+  },
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc",
+    "prepublishOnly": "npm run typecheck && npm run build",
+    "build:publish": "npm run version:patch && npm publish --access public",
+    "version:patch": "npm version patch --no-git-tag-version",
+    "version:minor": "npm version minor --no-git-tag-version",
+    "version:major": "npm version major --no-git-tag-version"
+  },
+  "peerDependencies": {
+    "kysely": ">=0.28"
+  },
+  "peerDependenciesMeta": {
+    "kysely": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@types/node": "^24",
+    "kysely": "^0.28",
+    "tsup": "^8",
+    "typescript": "^6.0"
+  }
+}
