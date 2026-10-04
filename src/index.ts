@@ -5,4 +5,4 @@ export * from "./eventStore/EventStorage";
 export * from "./eventStore/EventStore";
 export * from "./eventStore/InMemoryEventStorage";
 export * from "./eventStore/Projection";
-export * from "./eventStore/rebuildProjections";
+export * from "./eventStore/ProjectionRunner";

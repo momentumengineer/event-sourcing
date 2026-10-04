@@ -1,19 +1,10 @@
-import { Event } from "./Event";
-import type { EventStorage, StoredEvent } from "./EventStorage";
-import type { Projection } from "./Projection";
-
-export type ProjectionErrorHandler<E extends Event, Tx> = (
-  error: unknown,
-  projection: Projection<E, Tx>,
-  event: E,
-) => void;
+import type { Event } from "./Event";
+import { type EventStorage, eventFromStored, type StoredEvent } from "./EventStorage";
 
 export interface EventStoreOptions<E extends Event, Tx> {
   storage: EventStorage<Tx>;
   aggregateType: string;
-  projections?: Projection<E, Tx>[];
   deserialize?: (stored: StoredEvent) => E;
-  onProjectionError?: ProjectionErrorHandler<E, Tx>;
 }
 
 export interface AppendEventsOptions {
@@ -23,16 +14,12 @@ export interface AppendEventsOptions {
 export class EventStore<E extends Event, Tx = unknown> {
   readonly storage: EventStorage<Tx>;
   readonly aggregateType: string;
-  private readonly projections: Projection<E, Tx>[];
   private readonly deserialize: (stored: StoredEvent) => E;
-  private readonly onProjectionError: ProjectionErrorHandler<E, Tx>;
 
   constructor(options: EventStoreOptions<E, Tx>) {
     this.storage = options.storage;
     this.aggregateType = options.aggregateType;
-    this.projections = options.projections ?? [];
-    this.deserialize = options.deserialize ?? defaultDeserialize<E>;
-    this.onProjectionError = options.onProjectionError ?? defaultProjectionErrorHandler;
+    this.deserialize = options.deserialize ?? eventFromStored<E>;
   }
 
   async append(events: E[], options: AppendEventsOptions = {}): Promise<void> {
@@ -53,16 +40,6 @@ export class EventStore<E extends Event, Tx = unknown> {
       })),
       { aggregateType: this.aggregateType, aggregateId, expectedVersion: options.expectedVersion },
     );
-
-    for (const event of events) {
-      for (const projection of this.projections) {
-        try {
-          await this.storage.transaction((tx) => projection.project(tx, event));
-        } catch (error) {
-          this.onProjectionError(error, projection, event);
-        }
-      }
-    }
   }
 
   async loadAggregate(aggregateId: string): Promise<E[]> {
@@ -74,21 +51,4 @@ export class EventStore<E extends Event, Tx = unknown> {
     const stored = await this.storage.load(this.aggregateType);
     return stored.map(this.deserialize);
   }
-}
-
-function defaultDeserialize<E extends Event>(stored: StoredEvent): E {
-  return new Event(stored.aggregateId, stored.type, stored.data, {
-    id: stored.id,
-    createdAt: stored.createdAt,
-    metadata: stored.metadata,
-    version: stored.version,
-  }) as E;
-}
-
-function defaultProjectionErrorHandler(
-  error: unknown,
-  projection: Projection<Event, unknown>,
-  event: Event,
-): void {
-  console.error(`Projection ${projection.name} failed for event ${event.id} (${event.type})`, error);
 }
