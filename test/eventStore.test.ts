@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ConcurrencyError, Event, EventStore, InMemoryEventStorage } from "../src";
-import { increment, Reset, setup } from "./fixtures";
+import { Incremented, increment, Reset, setup } from "./fixtures";
 
 describe("CommandHandler", () => {
   it("stores the events returned by handle with increasing versions", async () => {
@@ -29,8 +29,9 @@ describe("CommandHandler", () => {
     await handler.handle(increment("c1", 4));
 
     await handler.handle(new Reset("c1"));
+    await handler.handle(increment("c1", 10));
 
-    expect((await store.loadAggregate("c1")).map((e) => e.data)).toEqual([{ by: 4 }, { by: -4 }]);
+    expect((await store.loadAggregate("c1")).map((e) => e.type)).toEqual(["Incremented", "CounterReset", "Incremented"]);
   });
 
   it("returns the stored events", async () => {
@@ -48,7 +49,7 @@ describe("EventStore", () => {
     await handler.handle(increment("c1", 1));
     await handler.handle(increment("c1", 1));
 
-    const append = store.append([new Event("c1", "Incremented", { by: 1 })], { expectedVersion: 1 });
+    const append = store.append([new Incremented("c1", 1)], { expectedVersion: 1 });
 
     await expect(append).rejects.toBeInstanceOf(ConcurrencyError);
     expect(await store.loadAggregate("c1")).toHaveLength(2);
@@ -58,8 +59,8 @@ describe("EventStore", () => {
     const { store } = setup();
 
     const append = store.append([
-      new Event("c1", "Incremented", { by: 1 }),
-      new Event("c2", "Incremented", { by: 1 }),
+      new Incremented("c1", 1),
+      new Incremented("c2", 1),
     ]);
 
     await expect(append).rejects.toThrow("same aggregate");
@@ -80,7 +81,7 @@ describe("EventStore", () => {
   it("keeps id, createdAt and metadata of stored events", async () => {
     const { store } = setup();
     const createdAt = new Date("2026-01-01T00:00:00Z");
-    const event = new Event("c1", "Incremented", { by: 1 }, { id: "e1", createdAt, metadata: { user: "u1" } });
+    const event = new Incremented("c1", 1, { id: "e1", createdAt, metadata: { user: "u1" } });
 
     await store.append([event]);
 
@@ -94,12 +95,12 @@ describe("EventStore", () => {
 describe("InMemoryEventStorage", () => {
   it("is not affected by mutating events after append or load", async () => {
     const { store } = setup();
-    const event = new Event("c1", "Incremented", { by: 1 });
+    const event = new Incremented("c1", 1);
     await store.append([event]);
 
     event.data.by = 99;
     const [loaded] = await store.loadAggregate("c1");
-    loaded.data.by = 42;
+    (loaded as Incremented).data.by = 42;
 
     expect((await store.loadAggregate("c1"))[0].data).toEqual({ by: 1 });
   });

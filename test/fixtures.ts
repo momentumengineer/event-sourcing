@@ -1,6 +1,19 @@
-import { AggregateRoot, Command, CommandHandler, Event, EventStore, InMemoryEventStorage } from "../src";
+import { AggregateRoot, Command, CommandHandler, Event, type EventOptions, EventStore, InMemoryEventStorage } from "../src";
 
-export type Incremented = Event<"Incremented", { by: number }>;
+export class Incremented extends Event<"Incremented", { by: number }> {
+  constructor(aggregateId: string, by: number, options?: EventOptions) {
+    super(aggregateId, "Incremented", { by }, options);
+  }
+}
+
+export class CounterReset extends Event<"CounterReset", {}> {
+  constructor(aggregateId: string) {
+    super(aggregateId, "CounterReset", {});
+  }
+}
+
+export type CounterEvent = Incremented | CounterReset;
+
 export class Increment extends Command {
   constructor(
     aggregateId: string,
@@ -18,22 +31,29 @@ export function increment(aggregateId: string, by: number): Increment {
   return new Increment(aggregateId, by);
 }
 
-export class Counter extends AggregateRoot<Incremented, CounterCommand> {
+export class Counter extends AggregateRoot<CounterEvent, CounterCommand> {
   count = 0;
 
-  apply(event: Incremented) {
-    this.count += event.data.by;
+  apply(event: CounterEvent) {
+    switch (event.type) {
+      case "Incremented":
+        this.count += event.data.by;
+        break;
+      case "CounterReset":
+        this.count = 0;
+        break;
+    }
   }
 
   handle(command: CounterCommand) {
-    if (command instanceof Reset) return [new Event(this.id, "Incremented", { by: -this.count })];
+    if (command instanceof Reset) return [new CounterReset(this.id)];
     if (this.count + command.by > 10) throw new Error("Counter cannot exceed 10");
-    return [new Event(this.id, "Incremented", { by: command.by })];
+    return [new Incremented(this.id, command.by)];
   }
 }
 
 export function setup(storage = new InMemoryEventStorage()) {
-  const store = new EventStore<Incremented, undefined>({ storage, aggregateType: "counter" });
+  const store = new EventStore<CounterEvent, undefined>({ storage, aggregateType: "counter" });
   const handler = new CommandHandler(store, (command: CounterCommand) => new Counter(command.aggregateId));
   return { storage, store, handler };
 }

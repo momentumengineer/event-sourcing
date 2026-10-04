@@ -11,7 +11,12 @@ npm install @momentumengineer/event-sourcing
 ```ts
 import { AggregateRoot, Command, CommandHandler, Event, EventStore, InMemoryEventStorage } from "@momentumengineer/event-sourcing";
 
-type Incremented = Event<"Incremented", { by: number }>;
+class Incremented extends Event<"Incremented", { by: number }> {
+  constructor(aggregateId: string, by: number) {
+    super(aggregateId, "Incremented", { by });
+  }
+}
+
 class Increment extends Command {
   constructor(aggregateId: string, readonly by: number) {
     super(aggregateId);
@@ -27,7 +32,7 @@ class Counter extends AggregateRoot<Incremented, Increment> {
 
   handle(command: Increment) {
     if (this.count + command.by > 100) throw new Error("Counter cannot exceed 100");
-    return [new Event(this.id, "Incremented", { by: command.by })];
+    return [new Incremented(this.id, command.by)];
   }
 }
 
@@ -37,7 +42,7 @@ const handler = new CommandHandler(store, (command: Increment) => new Counter(co
 await handler.handle(new Increment("counter-1", 2));
 ```
 
-Commands extend `Command`; an aggregate with several commands tells them apart with `instanceof`. Concurrent commands on the same aggregate throw a `ConcurrencyError`.
+Commands extend `Command`; an aggregate with several commands tells them apart with `instanceof`. Events extend `Event` with only a constructor: loaded events are plain `Event` objects, so `apply` and projections switch on `event.type`. Concurrent commands on the same aggregate throw a `ConcurrencyError`.
 
 ## Projections
 
