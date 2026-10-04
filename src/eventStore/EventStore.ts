@@ -12,9 +12,7 @@ export interface EventStoreOptions<E extends Event, Tx> {
   storage: EventStorage<Tx>;
   aggregateType: string;
   projections?: Projection<E, Tx>[];
-  /** Turns a stored event into your event type. Defaults to a plain `Event`. */
   deserialize?: (stored: StoredEvent) => E;
-  /** Called when a projection fails after events were appended. Defaults to `console.error`. */
   onProjectionError?: ProjectionErrorHandler<E, Tx>;
 }
 
@@ -37,7 +35,6 @@ export class EventStore<E extends Event, Tx = unknown> {
     this.onProjectionError = options.onProjectionError ?? defaultProjectionErrorHandler;
   }
 
-  /** Appends events of a single aggregate and runs the projections for them. */
   async append(events: E[], options: AppendEventsOptions = {}): Promise<void> {
     if (events.length === 0) return;
 

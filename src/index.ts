@@ -1,4 +1,4 @@
-export * from "./eventStore/Aggregate";
+export * from "./eventStore/AggregateRoot";
 export * from "./eventStore/CommandHandler";
 export * from "./eventStore/Event";
 export * from "./eventStore/EventStorage";

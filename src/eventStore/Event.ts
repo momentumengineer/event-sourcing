@@ -4,7 +4,6 @@ export interface EventOptions {
   id?: string;
   createdAt?: Date;
   metadata?: EventMetadata;
-  /** Position of the event in its aggregate stream; set on events loaded from storage. */
   version?: number;
 }
 

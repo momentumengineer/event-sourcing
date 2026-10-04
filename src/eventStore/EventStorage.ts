@@ -21,15 +21,8 @@ export interface AppendOptions {
 }
 
 export interface EventStorage<Tx = unknown> {
-  /**
-   * Appends events to a single aggregate stream. Versions start at 1 and are
-   * contiguous per aggregate. Must throw a ConcurrencyError when
-   * `expectedVersion` does not match the current version of the stream, or
-   * when another writer appended to the stream concurrently.
-   */
   append(events: EventRecord[], options: AppendOptions): Promise<void>;
 
-  /** Loads events of an aggregate type in append order, optionally for a single aggregate. */
   load(aggregateType: string, aggregateId?: string): Promise<StoredEvent[]>;
 
   transaction<T>(fn: (tx: Tx) => Promise<T>): Promise<T>;

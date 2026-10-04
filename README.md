@@ -9,22 +9,31 @@ npm install @momentumengineer/event-sourcing
 ## Usage
 
 ```ts
-import { CommandHandler, Event, EventStore, InMemoryEventStorage } from "@momentumengineer/event-sourcing";
+import { AggregateRoot, CommandHandler, Event, EventStore, InMemoryEventStorage } from "@momentumengineer/event-sourcing";
 
-class Counter {
+type Incremented = Event<"Incremented", { by: number }>;
+type Increment = { by: number };
+
+class Counter extends AggregateRoot<Incremented, Increment> {
   count = 0;
-  constructor(readonly id: string) {}
-  apply(event: Event) { this.count += (event.data as { by: number }).by; }
-  handle(command: { by: number }) { return [new Event(this.id, "Incremented", { by: command.by })]; }
+
+  protected on(event: Incremented) {
+    this.count += event.data.by;
+  }
+
+  handle(command: Increment) {
+    if (this.count + command.by > 100) throw new Error("Counter cannot exceed 100");
+    this.apply(new Event(this.id, "Incremented", { by: command.by }));
+  }
 }
 
-const store = new EventStore({ storage: new InMemoryEventStorage(), aggregateType: "counter" });
+const store = new EventStore<Incremented>({ storage: new InMemoryEventStorage(), aggregateType: "counter" });
 const handler = new CommandHandler(store, (id) => new Counter(id));
 
 await handler.handle("counter-1", { by: 2 });
 ```
 
-Concurrent commands on the same aggregate throw a `ConcurrencyError`.
+`on` updates state, `apply` updates state and stages the event. The `CommandHandler` stores staged events once `handle` returns. Concurrent commands on the same aggregate throw a `ConcurrencyError`.
 
 ## Kysely (PostgreSQL)
 

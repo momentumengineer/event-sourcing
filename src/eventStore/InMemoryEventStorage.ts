@@ -6,7 +6,6 @@ import {
   type StoredEvent,
 } from "./EventStorage";
 
-/** Non-durable storage for tests and examples. Transactions are not isolated; events are copied in and out. */
 export class InMemoryEventStorage implements EventStorage<undefined> {
   private readonly events: StoredEvent[] = [];
 

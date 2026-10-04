@@ -10,9 +10,7 @@ import {
 import type { EventDatabase, EventTable } from "./EventTable";
 import { decode, encode } from "./json";
 
-/** PostgreSQL event storage on top of Kysely. Create the table with `createEventTable`. */
 export class KyselyEventStorage<DB = unknown> implements EventStorage<Transaction<DB>> {
-  // Only the event table is touched here; a typed view avoids generic DB type gymnastics.
   private readonly events: Kysely<EventDatabase>;
 
   constructor(private readonly db: Kysely<DB>) {
@@ -68,7 +66,6 @@ export class KyselyEventStorage<DB = unknown> implements EventStorage<Transactio
       .selectFrom("event")
       .selectAll()
       .where("aggregate_type", "=", aggregateType);
-    // A single stream is ordered by version, so the unique constraint's index serves the query.
     query =
       aggregateId === undefined
         ? query.orderBy("position")
@@ -96,8 +93,6 @@ function toStoredEvent(row: Selectable<EventTable>): StoredEvent {
   };
 }
 
-// PostgreSQL unique_violation (also raised when the event id already exists) or
-// serialization_failure under REPEATABLE READ / SERIALIZABLE isolation.
 function isConflict(error: unknown): boolean {
   if (typeof error !== "object" || error === null || !("code" in error)) return false;
   return error.code === "23505" || error.code === "40001";
