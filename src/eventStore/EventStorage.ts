@@ -24,7 +24,7 @@ export interface AppendOptions {
 export interface EventStorage<Tx = unknown> {
   append(events: EventRecord[], options: AppendOptions): Promise<void>;
 
-  load(aggregateType: string, aggregateId?: string): Promise<StoredEvent[]>;
+  load(aggregateType: string, aggregateId: string): Promise<StoredEvent[]>;
 
   loadAfter(position: number, limit: number, aggregateTypes?: string[]): Promise<StoredEvent[]>;
 

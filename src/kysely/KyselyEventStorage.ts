@@ -71,17 +71,14 @@ export class KyselyEventStorage<DB = unknown>
     }
   }
 
-  async load(aggregateType: string, aggregateId?: string): Promise<StoredEvent[]> {
-    let query = this.events
+  async load(aggregateType: string, aggregateId: string): Promise<StoredEvent[]> {
+    const rows = await this.events
       .selectFrom("event")
       .selectAll()
-      .where("aggregate_type", "=", aggregateType);
-    query =
-      aggregateId === undefined
-        ? query.orderBy("position")
-        : query.where("aggregate_id", "=", aggregateId).orderBy("version");
-
-    const rows = await query.execute();
+      .where("aggregate_type", "=", aggregateType)
+      .where("aggregate_id", "=", aggregateId)
+      .orderBy("version")
+      .execute();
     return rows.map(toStoredEvent);
   }
 

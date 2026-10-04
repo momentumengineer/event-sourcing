@@ -34,13 +34,9 @@ export class InMemoryEventStorage implements EventStorage<undefined>, Projection
     });
   }
 
-  async load(aggregateType: string, aggregateId?: string): Promise<StoredEvent[]> {
+  async load(aggregateType: string, aggregateId: string): Promise<StoredEvent[]> {
     return structuredClone(
-      this.events.filter(
-        (event) =>
-          event.aggregateType === aggregateType &&
-          (aggregateId === undefined || event.aggregateId === aggregateId),
-      ),
+      this.events.filter((event) => event.aggregateType === aggregateType && event.aggregateId === aggregateId),
     );
   }
 

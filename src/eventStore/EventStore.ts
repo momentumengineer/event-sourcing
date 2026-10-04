@@ -43,9 +43,4 @@ export class EventStore<E extends Event, Tx = unknown> {
     const stored = await this.storage.load(this.aggregateType, aggregateId);
     return stored.map(eventFromStored<E>);
   }
-
-  async loadAllEvents(): Promise<E[]> {
-    const stored = await this.storage.load(this.aggregateType);
-    return stored.map(eventFromStored<E>);
-  }
 }
