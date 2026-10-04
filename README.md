@@ -17,13 +17,13 @@ type Increment = { by: number };
 class Counter extends AggregateRoot<Incremented, Increment> {
   count = 0;
 
-  protected on(event: Incremented) {
+  apply(event: Incremented) {
     this.count += event.data.by;
   }
 
   handle(command: Increment) {
     if (this.count + command.by > 100) throw new Error("Counter cannot exceed 100");
-    this.apply(new Event(this.id, "Incremented", { by: command.by }));
+    return [new Event(this.id, "Incremented", { by: command.by })];
   }
 }
 
@@ -33,7 +33,7 @@ const handler = new CommandHandler(store, (id) => new Counter(id));
 await handler.handle("counter-1", { by: 2 });
 ```
 
-`on` updates state, `apply` updates state and stages the event. The `CommandHandler` stores staged events once `handle` returns. Concurrent commands on the same aggregate throw a `ConcurrencyError`.
+Concurrent commands on the same aggregate throw a `ConcurrencyError`.
 
 ## Projections
 
@@ -50,11 +50,10 @@ const runner = new ProjectionRunner({
 await handler.handle("counter-1", { by: 2 });
 await runner.catchUp();
 
-await runner.states();
 await runner.rebuild("counters");
 ```
 
-`states()` returns per projection its position and, after a failure, `failedPosition`, `lastError` and `lastErrorAt`. Failures are also logged with `console.error`.
+Failures are logged with `console.error` and stored with the projection's position as `failedPosition`, `lastError` and `lastErrorAt`.
 
 ## Kysely (PostgreSQL)
 

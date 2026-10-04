@@ -1,2 +1,7 @@
-export * from "./EventTable";
-export * from "./KyselyEventStorage";
+export {
+  createEventTable,
+  createProjectionStateTable,
+  dropEventTable,
+  dropProjectionStateTable,
+} from "./EventTable";
+export { KyselyEventStorage } from "./KyselyEventStorage";

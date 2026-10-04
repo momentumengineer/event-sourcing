@@ -1,8 +1,16 @@
-export * from "./eventStore/AggregateRoot";
-export * from "./eventStore/CommandHandler";
-export * from "./eventStore/Event";
-export * from "./eventStore/EventStorage";
-export * from "./eventStore/EventStore";
-export * from "./eventStore/InMemoryEventStorage";
-export * from "./eventStore/Projection";
-export * from "./eventStore/ProjectionRunner";
+export { AggregateRoot } from "./eventStore/AggregateRoot";
+export { CommandHandler } from "./eventStore/CommandHandler";
+export { Event, type EventMetadata, type EventOptions } from "./eventStore/Event";
+export {
+  type AppendOptions,
+  ConcurrencyError,
+  type EventRecord,
+  type EventStorage,
+  type ProjectionState,
+  type ProjectionStateStorage,
+  type StoredEvent,
+} from "./eventStore/EventStorage";
+export { EventStore } from "./eventStore/EventStore";
+export { InMemoryEventStorage } from "./eventStore/InMemoryEventStorage";
+export type { Projection } from "./eventStore/Projection";
+export { ProjectionRunner } from "./eventStore/ProjectionRunner";

@@ -2,7 +2,6 @@ import type { Event } from "./Event";
 import {
   type EventStorage,
   eventFromStored,
-  type ProjectionState,
   type ProjectionStateStorage,
   type StoredEvent,
 } from "./EventStorage";
@@ -51,10 +50,6 @@ export class ProjectionRunner<E extends Event = Event, Tx = unknown> {
       await this.storage.saveProjectionPosition(tx, name, 0);
     });
     await this.catchUpProjection(projection);
-  }
-
-  states(): Promise<ProjectionState[]> {
-    return Promise.all(this.projections.map((p) => this.storage.getProjectionState(p.name)));
   }
 
   private async catchUpProjection(projection: Projection<E, Tx>): Promise<void> {

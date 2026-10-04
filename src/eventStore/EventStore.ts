@@ -12,8 +12,8 @@ export interface AppendEventsOptions {
 }
 
 export class EventStore<E extends Event, Tx = unknown> {
-  readonly storage: EventStorage<Tx>;
-  readonly aggregateType: string;
+  private readonly storage: EventStorage<Tx>;
+  private readonly aggregateType: string;
   private readonly deserialize: (stored: StoredEvent) => E;
 
   constructor(options: EventStoreOptions<E, Tx>) {

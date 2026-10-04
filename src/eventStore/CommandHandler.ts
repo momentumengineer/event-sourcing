@@ -10,15 +10,11 @@ export class CommandHandler<E extends Event, C, Tx = unknown> {
 
   async handle(aggregateId: string, command: C): Promise<E[]> {
     const aggregate = this.create(aggregateId, command);
-    aggregate.loadFromHistory(await this.store.loadAggregate(aggregateId));
+    const history = await this.store.loadAggregate(aggregateId);
+    for (const event of history) aggregate.apply(event);
 
-    aggregate.handle(command);
-
-    const events = aggregate.pullPendingEvents();
-    if (events.some((event) => event.aggregateId !== aggregateId)) {
-      throw new Error(`Aggregate ${aggregateId} applied an event for another aggregate`);
-    }
-    await this.store.append(events, { expectedVersion: aggregate.version });
+    const events = aggregate.handle(command);
+    await this.store.append(events, { expectedVersion: history.length });
     return events;
   }
 }
