@@ -9,10 +9,14 @@ npm install @momentumengineer/event-sourcing
 ## Usage
 
 ```ts
-import { AggregateRoot, CommandHandler, Event, EventStore, InMemoryEventStorage } from "@momentumengineer/event-sourcing";
+import { AggregateRoot, Command, CommandHandler, Event, EventStore, InMemoryEventStorage } from "@momentumengineer/event-sourcing";
 
 type Incremented = Event<"Incremented", { by: number }>;
-type Increment = { by: number };
+class Increment extends Command {
+  constructor(aggregateId: string, readonly by: number) {
+    super(aggregateId);
+  }
+}
 
 class Counter extends AggregateRoot<Incremented, Increment> {
   count = 0;
@@ -28,12 +32,12 @@ class Counter extends AggregateRoot<Incremented, Increment> {
 }
 
 const store = new EventStore<Incremented>({ storage: new InMemoryEventStorage(), aggregateType: "counter" });
-const handler = new CommandHandler(store, (id) => new Counter(id));
+const handler = new CommandHandler(store, (command: Increment) => new Counter(command.aggregateId));
 
-await handler.handle("counter-1", { by: 2 });
+await handler.handle(new Increment("counter-1", 2));
 ```
 
-Concurrent commands on the same aggregate throw a `ConcurrencyError`.
+Commands extend `Command`; an aggregate with several commands tells them apart with `instanceof`. Concurrent commands on the same aggregate throw a `ConcurrencyError`.
 
 ## Projections
 
@@ -47,7 +51,7 @@ const runner = new ProjectionRunner({
   projections: [{ name: "counters", aggregateTypes: ["counter"], reset: async (tx) => {}, project: async (tx, event) => {} }],
 });
 
-await handler.handle("counter-1", { by: 2 });
+await handler.handle(new Increment("counter-1", 2));
 await runner.catchUp();
 
 await runner.rebuild("counters");

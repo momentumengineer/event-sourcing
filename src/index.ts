@@ -1,4 +1,5 @@
 export { AggregateRoot } from "./eventStore/AggregateRoot";
+export { Command } from "./eventStore/Command";
 export { CommandHandler } from "./eventStore/CommandHandler";
 export { Event, type EventMetadata, type EventOptions } from "./eventStore/Event";
 export {

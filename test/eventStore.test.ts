@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { ConcurrencyError, Event, EventStore, InMemoryEventStorage } from "../src";
-import { setup } from "./fixtures";
+import { increment, Reset, setup } from "./fixtures";
 
 describe("CommandHandler", () => {
   it("stores the events returned by handle with increasing versions", async () => {
     const { store, handler } = setup();
 
-    await handler.handle("c1", { by: 2 });
-    await handler.handle("c1", { by: 3 });
+    await handler.handle(increment("c1", 2));
+    await handler.handle(increment("c1", 3));
 
     const events = await store.loadAggregate("c1");
     expect(events.map((e) => [e.version, e.type, e.data])).toEqual([
@@ -18,16 +18,25 @@ describe("CommandHandler", () => {
 
   it("applies the history before handling so business rules see the current state", async () => {
     const { store, handler } = setup();
-    await handler.handle("c1", { by: 8 });
+    await handler.handle(increment("c1", 8));
 
-    await expect(handler.handle("c1", { by: 3 })).rejects.toThrow("Counter cannot exceed 10");
+    await expect(handler.handle(increment("c1", 3))).rejects.toThrow("Counter cannot exceed 10");
     expect(await store.loadAggregate("c1")).toHaveLength(1);
+  });
+
+  it("passes each command class to handle", async () => {
+    const { store, handler } = setup();
+    await handler.handle(increment("c1", 4));
+
+    await handler.handle(new Reset("c1"));
+
+    expect((await store.loadAggregate("c1")).map((e) => e.data)).toEqual([{ by: 4 }, { by: -4 }]);
   });
 
   it("returns the stored events", async () => {
     const { handler } = setup();
 
-    const events = await handler.handle("c1", { by: 2 });
+    const events = await handler.handle(increment("c1", 2));
 
     expect(events.map((e) => e.data)).toEqual([{ by: 2 }]);
   });
@@ -36,8 +45,8 @@ describe("CommandHandler", () => {
 describe("EventStore", () => {
   it("throws a ConcurrencyError when the expected version is stale", async () => {
     const { store, handler } = setup();
-    await handler.handle("c1", { by: 1 });
-    await handler.handle("c1", { by: 1 });
+    await handler.handle(increment("c1", 1));
+    await handler.handle(increment("c1", 1));
 
     const append = store.append([new Event("c1", "Incremented", { by: 1 })], { expectedVersion: 1 });
 
@@ -60,8 +69,8 @@ describe("EventStore", () => {
     const storage = new InMemoryEventStorage();
     const { store, handler } = setup(storage);
     const other = new EventStore({ storage, aggregateType: "other" });
-    await handler.handle("c1", { by: 1 });
-    await handler.handle("c2", { by: 2 });
+    await handler.handle(increment("c1", 1));
+    await handler.handle(increment("c2", 2));
     await other.append([new Event("c1", "Other", {})]);
 
     expect((await store.loadAggregate("c1")).map((e) => e.data)).toEqual([{ by: 1 }]);

@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, type MockInstance, vi } from "vitest";
 import { Event, EventStore, InMemoryEventStorage, type Projection, ProjectionRunner } from "../src";
-import { type Incremented, setup } from "./fixtures";
+import { increment, type Incremented, setup } from "./fixtures";
 
 function recorder(name: string, options: Partial<Projection<Event, undefined>> = {}) {
   const seen: unknown[] = [];
@@ -31,8 +31,8 @@ describe("ProjectionRunner", () => {
   it("projects all events in order", async () => {
     const { storage, handler } = setup();
     const { seen, projection } = recorder("all");
-    await handler.handle("c1", { by: 1 });
-    await handler.handle("c2", { by: 2 });
+    await handler.handle(increment("c1", 1));
+    await handler.handle(increment("c2", 2));
 
     await new ProjectionRunner({ storage, projections: [projection] }).catchUp();
 
@@ -43,10 +43,10 @@ describe("ProjectionRunner", () => {
     const { storage, handler } = setup();
     const { seen, projection } = recorder("all");
     const runner = new ProjectionRunner({ storage, projections: [projection] });
-    await handler.handle("c1", { by: 1 });
+    await handler.handle(increment("c1", 1));
     await runner.catchUp();
 
-    await handler.handle("c1", { by: 2 });
+    await handler.handle(increment("c1", 2));
     await runner.catchUp();
 
     expect(seen).toEqual([{ by: 1 }, { by: 2 }]);
@@ -56,7 +56,7 @@ describe("ProjectionRunner", () => {
   it("processes more events than one batch", async () => {
     const { storage, handler } = setup();
     const { seen, projection } = recorder("all");
-    for (let i = 0; i < 5; i++) await handler.handle("c1", { by: 1 });
+    for (let i = 0; i < 5; i++) await handler.handle(increment("c1", 1));
 
     await new ProjectionRunner({ storage, projections: [projection], batchSize: 2 }).catchUp();
 
@@ -66,7 +66,7 @@ describe("ProjectionRunner", () => {
   it("only projects the configured aggregate types", async () => {
     const storage = new InMemoryEventStorage();
     const { handler } = setup(storage);
-    await handler.handle("c1", { by: 1 });
+    await handler.handle(increment("c1", 1));
     await new EventStore({ storage, aggregateType: "other" }).append([new Event("o1", "Other", { other: true })]);
     const { seen, projection } = recorder("others", { aggregateTypes: ["other"] });
 
@@ -77,7 +77,7 @@ describe("ProjectionRunner", () => {
 
   it("stops a failing projection, logs and stores the error, and keeps running the others", async () => {
     const { storage, handler } = setup();
-    for (const by of [1, 2, 3]) await handler.handle("c1", { by });
+    for (const by of [1, 2, 3]) await handler.handle(increment("c1", by));
     const failing = recorder("failing", {
       project: async (_tx, event) => {
         if ((event as Incremented).data.by === 2) throw new Error("boom");
@@ -99,7 +99,7 @@ describe("ProjectionRunner", () => {
 
   it("recovers on the next catch up once the projection works and clears the error", async () => {
     const { storage, handler } = setup();
-    await handler.handle("c1", { by: 1 });
+    await handler.handle(increment("c1", 1));
     let broken = true;
     const { seen, projection } = recorder("flaky", {
       project: async (_tx, event) => {
@@ -127,9 +127,9 @@ describe("ProjectionRunner", () => {
     });
     const runner = new ProjectionRunner({ storage, projections: [projection] });
 
-    await handler.handle("c1", { by: 1 });
+    await handler.handle(increment("c1", 1));
     await expect(runner.catchUp()).resolves.toBeUndefined();
-    await handler.handle("c1", { by: 2 });
+    await handler.handle(increment("c1", 2));
 
     expect(await store.loadAggregate("c1")).toHaveLength(2);
   });
@@ -138,8 +138,8 @@ describe("ProjectionRunner", () => {
     const { storage, handler } = setup();
     const { seen, projection } = recorder("all");
     const runner = new ProjectionRunner({ storage, projections: [projection] });
-    await handler.handle("c1", { by: 1 });
-    await handler.handle("c1", { by: 2 });
+    await handler.handle(increment("c1", 1));
+    await handler.handle(increment("c1", 2));
     await runner.catchUp();
 
     await runner.rebuild("all");
