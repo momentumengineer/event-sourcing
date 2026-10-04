@@ -16,7 +16,6 @@ export type ProjectionRunnerErrorHandler<E extends Event, Tx> = (
 export interface ProjectionRunnerOptions<E extends Event, Tx> {
   storage: EventStorage<Tx> & ProjectionStateStorage<Tx>;
   projections: Projection<E, Tx>[];
-  deserialize?: (stored: StoredEvent) => E;
   batchSize?: number;
   onError?: ProjectionRunnerErrorHandler<E, Tx>;
 }
@@ -24,14 +23,12 @@ export interface ProjectionRunnerOptions<E extends Event, Tx> {
 export class ProjectionRunner<E extends Event = Event, Tx = unknown> {
   private readonly storage: EventStorage<Tx> & ProjectionStateStorage<Tx>;
   private readonly projections: Projection<E, Tx>[];
-  private readonly deserialize: (stored: StoredEvent) => E;
   private readonly batchSize: number;
   private readonly onError: ProjectionRunnerErrorHandler<E, Tx>;
 
   constructor(options: ProjectionRunnerOptions<E, Tx>) {
     this.storage = options.storage;
     this.projections = options.projections;
-    this.deserialize = options.deserialize ?? eventFromStored<E>;
     this.batchSize = options.batchSize ?? 100;
     this.onError = options.onError ?? defaultErrorHandler;
   }
@@ -85,7 +82,7 @@ export class ProjectionRunner<E extends Event = Event, Tx = unknown> {
 
         for (const event of events) {
           current = event;
-          await projection.project(tx, this.deserialize(event));
+          await projection.project(tx, eventFromStored<E>(event));
         }
         const last = events[events.length - 1].position;
         await this.storage.saveProjectionPosition(tx, projection.name, last);
