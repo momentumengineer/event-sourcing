@@ -7,7 +7,7 @@ import {
   type EventStorage,
   type StoredEvent,
 } from "../eventStore/EventStorage";
-import type { EventDatabase, EventTable } from "./EventTable";
+import { type EventDatabase, type EventTable, eventVersionConstraint } from "./EventTable";
 import { decode, encode } from "./json";
 
 export class KyselyEventStorage<DB = unknown> implements EventStorage<Transaction<DB>> {
@@ -95,5 +95,6 @@ function toStoredEvent(row: Selectable<EventTable>): StoredEvent {
 
 function isConflict(error: unknown): boolean {
   if (typeof error !== "object" || error === null || !("code" in error)) return false;
-  return error.code === "23505" || error.code === "40001";
+  if (error.code === "40001") return true;
+  return error.code === "23505" && "constraint" in error && error.constraint === eventVersionConstraint;
 }

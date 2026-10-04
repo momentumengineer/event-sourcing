@@ -13,6 +13,8 @@ export interface EventTable {
   data: ColumnType<object, string, never>;
 }
 
+export const eventVersionConstraint = "event_aggregate_version_unique";
+
 export type EventDatabase = {
   event: EventTable;
 };
@@ -29,7 +31,7 @@ export async function createEventTable(db: Kysely<any>): Promise<void> {
     .addColumn("created_at", "timestamptz", (col) => col.notNull())
     .addColumn("metadata", "jsonb", (col) => col.notNull().defaultTo(sql`'{}'::jsonb`))
     .addColumn("data", "jsonb", (col) => col.notNull())
-    .addUniqueConstraint("event_aggregate_version_unique", [
+    .addUniqueConstraint(eventVersionConstraint, [
       "aggregate_type",
       "aggregate_id",
       "version",
