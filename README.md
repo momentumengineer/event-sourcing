@@ -32,7 +32,7 @@ class Counter extends AggregateRoot<Incremented, Increment> {
 
   handle(command: Increment) {
     if (this.count + command.by > 100) throw new Error("Counter cannot exceed 100");
-    return [new Incremented(this.id, command.by)];
+    this.record(new Incremented(this.id, command.by));
   }
 }
 
@@ -42,7 +42,7 @@ const handler = new CommandHandler(store, (command: Increment) => new Counter(co
 await handler.handle(new Increment("counter-1", 2));
 ```
 
-Commands extend `Command`; an aggregate with several commands tells them apart with `instanceof`. Events extend `Event` with only a constructor: loaded events are plain `Event` objects, so `apply` and projections switch on `event.type`. Concurrent commands on the same aggregate throw a `ConcurrencyError`.
+Commands extend `Command`; an aggregate with several commands tells them apart with `instanceof`. Events extend `Event` with only a constructor: loaded events are plain `Event` objects, so `apply` and projections switch on `event.type`. `record` applies an event to the aggregate right away; the `CommandHandler` stores all recorded events in one go once `handle` returns, and stores nothing if `handle` throws. Concurrent commands on the same aggregate throw a `ConcurrencyError`.
 
 ## Projections
 

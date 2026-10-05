@@ -1,4 +1,4 @@
-import type { AggregateRoot } from "./AggregateRoot";
+import { type AggregateRoot, recordedEvents } from "./AggregateRoot";
 import type { Command } from "./Command";
 import type { Event } from "./Event";
 import type { EventStore } from "./EventStore";
@@ -14,7 +14,12 @@ export class CommandHandler<E extends Event, C extends Command, Tx = unknown> {
     const history = await this.store.loadAggregate(command.aggregateId);
     for (const event of history) aggregate.apply(event);
 
-    const events = aggregate.handle(command);
+    aggregate.handle(command);
+
+    const events = recordedEvents(aggregate);
+    if (events.some((event) => event.aggregateId !== command.aggregateId)) {
+      throw new Error(`Aggregate ${command.aggregateId} recorded an event for another aggregate`);
+    }
     await this.store.append(events, { expectedVersion: history.length });
     return events;
   }

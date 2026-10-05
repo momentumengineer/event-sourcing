@@ -46,9 +46,9 @@ export class Counter extends AggregateRoot<CounterEvent, CounterCommand> {
   }
 
   handle(command: CounterCommand) {
-    if (command instanceof Reset) return [new CounterReset(this.id)];
+    if (command instanceof Reset) return this.record(new CounterReset(this.id));
     if (this.count + command.by > 10) throw new Error("Counter cannot exceed 10");
-    return [new Incremented(this.id, command.by)];
+    this.record(new Incremented(this.id, command.by));
   }
 }
 

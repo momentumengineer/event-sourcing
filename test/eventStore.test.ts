@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { ConcurrencyError, Event, EventStore, InMemoryEventStorage } from "../src";
-import { Incremented, increment, Reset, setup } from "./fixtures";
+import { AggregateRoot, Command, CommandHandler, ConcurrencyError, Event, EventStore, InMemoryEventStorage } from "../src";
+import { type CounterEvent, Incremented, increment, Reset, setup } from "./fixtures";
 
 describe("CommandHandler", () => {
-  it("stores the events returned by handle with increasing versions", async () => {
+  it("stores the recorded events with increasing versions", async () => {
     const { store, handler } = setup();
 
     await handler.handle(increment("c1", 2));
@@ -32,6 +32,66 @@ describe("CommandHandler", () => {
     await handler.handle(increment("c1", 10));
 
     expect((await store.loadAggregate("c1")).map((e) => e.type)).toEqual(["Incremented", "CounterReset", "Incremented"]);
+  });
+
+  it("applies recorded events right away so later rules in handle see them", async () => {
+    class AddTwice extends Command {}
+    class Doubler extends AggregateRoot<CounterEvent, AddTwice> {
+      count = 0;
+      seen: number[] = [];
+
+      apply(event: CounterEvent) {
+        if (event.type === "Incremented") this.count += event.data.by;
+      }
+
+      handle() {
+        this.record(new Incremented(this.id, 1));
+        this.seen.push(this.count);
+        this.record(new Incremented(this.id, 1));
+        this.seen.push(this.count);
+      }
+    }
+    const storage = new InMemoryEventStorage();
+    const store = new EventStore<CounterEvent, undefined>({ storage, aggregateType: "counter" });
+    let doubler: Doubler | undefined;
+    const handler = new CommandHandler(store, (command: AddTwice) => (doubler = new Doubler(command.aggregateId)));
+
+    await handler.handle(new AddTwice("c1"));
+
+    expect(doubler?.seen).toEqual([1, 2]);
+    expect(await store.loadAggregate("c1")).toHaveLength(2);
+  });
+
+  it("stores nothing when handle fails after recording", async () => {
+    class Fail extends Command {}
+    class Failing extends AggregateRoot<CounterEvent, Fail> {
+      apply() {}
+
+      handle() {
+        this.record(new Incremented(this.id, 1));
+        throw new Error("rule broken");
+      }
+    }
+    const store = new EventStore<CounterEvent, undefined>({ storage: new InMemoryEventStorage(), aggregateType: "counter" });
+    const handler = new CommandHandler(store, (command: Fail) => new Failing(command.aggregateId));
+
+    await expect(handler.handle(new Fail("c1"))).rejects.toThrow("rule broken");
+    expect(await store.loadAggregate("c1")).toHaveLength(0);
+  });
+
+  it("rejects an event recorded for another aggregate", async () => {
+    class Wrong extends Command {}
+    class Confused extends AggregateRoot<CounterEvent, Wrong> {
+      apply() {}
+
+      handle() {
+        this.record(new Incremented("someone-else", 1));
+      }
+    }
+    const store = new EventStore<CounterEvent, undefined>({ storage: new InMemoryEventStorage(), aggregateType: "counter" });
+    const handler = new CommandHandler(store, (command: Wrong) => new Confused(command.aggregateId));
+
+    await expect(handler.handle(new Wrong("c1"))).rejects.toThrow("another aggregate");
   });
 
   it("returns the stored events", async () => {

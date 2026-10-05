@@ -1,6 +1,6 @@
 {
   "name": "@momentumengineer/event-sourcing",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Event sourcing building blocks: events, aggregates, command handlers and projections, with pluggable storage.",
   "author": "Momentum Engineer",
   "license": "MIT",
