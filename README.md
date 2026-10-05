@@ -37,12 +37,14 @@ class Counter extends AggregateRoot<Incremented, Increment> {
 }
 
 const store = new EventStore<Incremented>({ storage: new InMemoryEventStorage(), aggregateType: "counter" });
-const handler = new CommandHandler(store, (command: Increment) => new Counter(command.aggregateId));
+const handler = new CommandHandler(store, (command: Increment) => new Counter(command.aggregateId), {
+  metadata: () => ({ userId: "u1" }),
+});
 
 await handler.handle(new Increment("counter-1", 2));
 ```
 
-Commands extend `Command`; an aggregate with several commands tells them apart with `instanceof`. Events extend `Event` with only a constructor: loaded events are plain `Event` objects, so `apply` and projections switch on `event.type`. `record` applies an event to the aggregate right away; the `CommandHandler` stores all recorded events in one go once `handle` returns, and stores nothing if `handle` throws. Concurrent commands on the same aggregate throw a `ConcurrencyError`.
+Commands extend `Command`. The optional `metadata` function of the `CommandHandler` is called for every command and its result is added to the metadata of every recorded event; metadata set on the event itself wins. An aggregate with several commands tells them apart with `instanceof`. Events extend `Event` with only a constructor: loaded events are plain `Event` objects, so `apply` and projections switch on `event.type`. `record` applies an event to the aggregate right away; the `CommandHandler` stores all recorded events in one go once `handle` returns, and stores nothing if `handle` throws. Concurrent commands on the same aggregate throw a `ConcurrencyError`.
 
 ## Projections
 

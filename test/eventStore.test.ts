@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { AggregateRoot, Command, CommandHandler, ConcurrencyError, Event, EventStore, InMemoryEventStorage } from "../src";
-import { type CounterEvent, Incremented, increment, Reset, setup } from "./fixtures";
+import { Counter, type CounterCommand, type CounterEvent, Increment, Incremented, increment, Reset, setup } from "./fixtures";
 
 describe("CommandHandler", () => {
   it("stores the recorded events with increasing versions", async () => {
@@ -92,6 +92,40 @@ describe("CommandHandler", () => {
     const handler = new CommandHandler(store, (command: Wrong) => new Confused(command.aggregateId));
 
     await expect(handler.handle(new Wrong("c1"))).rejects.toThrow("another aggregate");
+  });
+
+  it("adds the handler metadata to every recorded event", async () => {
+    const store = new EventStore<CounterEvent, undefined>({ storage: new InMemoryEventStorage(), aggregateType: "counter" });
+    let user = "u1";
+    const handler = new CommandHandler(store, (command: CounterCommand) => new Counter(command.aggregateId), {
+      metadata: () => ({ userId: user }),
+    });
+
+    const returned = await handler.handle(new Increment("c1", 2));
+    user = "u2";
+    await handler.handle(new Reset("c1"));
+
+    expect(returned[0].metadata).toEqual({ userId: "u1" });
+    expect((await store.loadAggregate("c1")).map((e) => e.metadata)).toEqual([{ userId: "u1" }, { userId: "u2" }]);
+  });
+
+  it("lets metadata set on the event win over the handler metadata", async () => {
+    class Tag extends Command {}
+    class Tagger extends AggregateRoot<CounterEvent, Tag> {
+      apply() {}
+
+      handle() {
+        this.record(new Incremented(this.id, 1, { metadata: { source: "event" } }));
+      }
+    }
+    const store = new EventStore<CounterEvent, undefined>({ storage: new InMemoryEventStorage(), aggregateType: "counter" });
+    const handler = new CommandHandler(store, (command: Tag) => new Tagger(command.aggregateId), {
+      metadata: () => ({ source: "handler", userId: "u1" }),
+    });
+
+    await handler.handle(new Tag("c1"));
+
+    expect((await store.loadAggregate("c1"))[0].metadata).toEqual({ source: "event", userId: "u1" });
   });
 
   it("returns the stored events", async () => {
